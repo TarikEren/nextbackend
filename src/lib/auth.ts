@@ -2,7 +2,7 @@ import UserModel from "@/models/userModel";
 import * as bcrypt from "bcrypt";
 import NextAuth from "next-auth"
 import Credentials from "next-auth/providers/credentials"
-import { connectDB } from "@/db/db";
+import { connectDB } from "@/lib/db";
 import Google, { GoogleProfile } from "next-auth/providers/google";
 import { IUserModel } from "@/lib/types";
 

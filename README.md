@@ -1,36 +1,30 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# NextJS Backend
 
-## Getting Started
+A plug-and-play, serverless NextJS and MongoDB backend following the principles of a layered service-repository architecture.
 
-First, run the development server:
+## Layers
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+### Repository Layer (Data Access Layer)
+- Handles database persistence.
+- Comprised of basic database operations. In this case, it's MongoDB operations.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Service Layer
+- Handles and enforces business logic.
+- Uses the functionality implemented in the repository layer to implement more detailed and rigid functionality.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Presentation Layer
+- Handles client inputs and calls service functions based on the client inputs.
+- Implements session and authorization to the service layer functionality.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The backend also uses dependency injections and dependency inversion principles.
 
-## Learn More
+This means that the backend is more flexible as the dependencies are tied to each other loosely; which makes changing and adding functionality easier and worry-free.
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Packages used:
+| Package name | Use Case |
+|--------------|----------|
+| AuthJS | Authentication and authorization |
+| Mongoose | Database connection, operations and object modelling |
+| Pino | Logging |
+| Zod | Schema validation |
+| bcrypt | Hashing and encryption |
