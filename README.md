@@ -2,6 +2,8 @@
 
 A plug-and-play, serverless NextJS and MongoDB backend following the principles of a layered service-repository architecture.
 
+Contains user related properties and methods.
+
 ## Layers
 
 ### Repository Layer (Data Access Layer)
