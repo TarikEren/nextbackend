@@ -1,10 +1,10 @@
-import UserModel from "@/models/userModel";
-import * as bcrypt from "bcrypt";
 import NextAuth from "next-auth"
 import Credentials from "next-auth/providers/credentials"
-import { connectDB } from "@/lib/db";
 import Google, { GoogleProfile } from "next-auth/providers/google";
-import { IUserModel } from "@/lib/types";
+import logger from "./logger";
+import { UserRepository } from "@/repositories/userRepository";
+import { UserService } from "@/services/userService";
+import { AuthenticationError } from "./errors";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
     pages: {
@@ -22,40 +22,34 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 password: { label: "password", type: "password" }
             },
             authorize: async (credentials) => {
-                const email = credentials?.email as string;
-                const password = credentials?.password as string;
+                // Dependencies
+                const reqLogger = logger.child({ authProvider: 'credentials' });
+                const userRepository = new UserRepository(reqLogger);
+                const userService = new UserService(userRepository, reqLogger);
 
-                if (!email || !password) {
-                    throw new Error("E-posta ve şifre alanları zorunludur.");
-                }
-
-                await connectDB();
                 try {
-                    // Find the user and explicitly select the password field
-                    const user = await UserModel.findOne({ email: email.toLowerCase() })
-                        .select('+password') // Get the password field
-                        .lean<IUserModel>();      // Tell lean the object shape
+                    // Authenticate the user
+                    const user = await userService.authenticateUser({
+                        email: credentials?.email as string,
+                        password: credentials?.password as string,
+                    });
 
-                    // If user is not found or password doesn't exist (due to schema)
-                    if (!user || !user.password) {
-                        throw new Error("Geçersiz e-posta veya şifre.");
-                    }
-
-                    const isPasswordMatch = await bcrypt.compare(password, user.password);
-                    if (!isPasswordMatch) {
-                        throw new Error("Geçersiz e-posta veya şifre.");
-                    }
-
+                    // Return the user
                     return {
-                        id: user._id.toString(),
+                        id: user.id,
                         email: user.email,
                         isAdmin: user.isAdmin,
-                        emailVerified: user.emailVerified
+                        emailVerified: user.emailVerified,
                     };
-                } catch (error: any) {
-                    // Log the real error for debugging, but throw a generic one
-                    console.error("Authorize error:", error.message);
-                    throw new Error("Geçersiz e-posta veya şifre.");
+                } catch (error) {
+                    // If the error is just an authentication error, return null
+                    // Else, log the error and return null
+                    if (error instanceof AuthenticationError) {
+                        return null;
+                    } else {
+                        reqLogger.error({ error }, "An unexpected error occurred during authentication");
+                        return null;
+                    }
                 }
             }
         }),
@@ -95,28 +89,24 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         async signIn({ user, account, profile }) {
             if (account?.provider === "google") {
-                await connectDB();
-                let dbUser = await UserModel.findOne({ email: user.email }).lean<IUserModel>();
-                // If the user doesn't exist, create them
-                if (!dbUser) {
-                    try {
-                        const newUser = await UserModel.create({
-                            email: user.email,
-                            password: undefined,
-                            isAdmin: false,
-                            emailVerified: true
-                        });
-                        // Assign the newly created user to dbUser
-                        dbUser = newUser.toObject() as IUserModel;
+                const reqLogger = logger.child({ authProvider: 'google-signIn' });
+                const userRepository = new UserRepository(reqLogger);
+                const userService = new UserService(userRepository, reqLogger);
+                try {
+                    const dbUser = await userService.findOrCreateUserFromProvider({
+                        email: user.email!,
+                        firstName: user.name?.split(' ')[0],
+                        lastName: user.name?.split(' ').slice(1).join(' ')
+                    });
+                    user.id = dbUser.id;
+                    user.isAdmin = dbUser.isAdmin;
+                    user.emailVerified = dbUser.emailVerified;
 
-                    } catch (error) {
-                        console.error("Error during Google sign-in user creation:", error);
-                        return false;
-                    }
+                } catch (error) {
+                    // Log and stop the sign-in process
+                    reqLogger.error({ error }, "Failed to find or create user from Google provider.");
+                    return false;
                 }
-                user.id = dbUser._id.toString();
-                user.isAdmin = dbUser.isAdmin;
-                user.emailVerified = dbUser.emailVerified;
             }
             return true;
         }

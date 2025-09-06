@@ -1,5 +1,4 @@
-import { acceptedCardBrands } from '@/lib/types';
-import { IAddress, IPaymentMethod, IUserModel } from '@/lib/types';
+import { acceptedCardBrands, IAddress, IPaymentMethod, IUserModel } from '@/lib/types/models';
 import mongoose from 'mongoose';
 
 export const addressSchema = new mongoose.Schema<IAddress>({
@@ -27,21 +26,22 @@ const userSchema = new mongoose.Schema<IUserModel>({
         lowercase: true,
         trim: true
     },
-    password: { type: String, select: false },      // Not "required" as there's also OAuth login / register option
+    password: { type: String, select: false, required: false },      // Not "required" as there's also OAuth login / register option
     isAdmin: { type: Boolean, default: false },
     emailVerified: { type: Boolean, default: false },
     phoneNumber: {
         type: String,
-        unique: true,
-        required: true
+        unique: true
     },
+    phoneVerified: { type: Boolean, default: false },
     savedCards: [paymentMethodSchema],
     savedAddresses: [addressSchema],
     savedProducts: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: "Product" }], default: [] },
     visitedProducts: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: "Product" }], default: [] },
     pastOrders: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: "Order" }], default: [] },
-    userCart: { type: mongoose.Schema.Types.ObjectId, ref: "Cart" },
-    messages: { type: [{ type: String }], default: [] }
+    userCart: { type: mongoose.Schema.Types.ObjectId, ref: "Cart" }, // TODO: Create a cart upon register
+    messages: { type: [{ type: String }], default: [] },
+    provider: { type: String, enum: ["credentials", "oauth"], default: "credentials" }
 }, { timestamps: true });
 
 const UserModel = mongoose.models.User || mongoose.model('User', userSchema);

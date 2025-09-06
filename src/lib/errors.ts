@@ -24,17 +24,9 @@ export class AppError extends Error {
  * Represents a generic internal server error (e.g., couldn't connect to database).
  * Corresponds to HTTP 500.
  */
-export class InternalServerError implements AppError {
-    message: string;
-    status: number;
-    name: string;
-    stack?: string | undefined;
-    cause?: unknown;
-
-    constructor(message: string) {
-        this.name = "Internal Server Error";
-        this.message = message;
-        this.status = 500;
+export class InternalServerError extends AppError {
+    constructor(message: string = "Internal server error") {
+        super(message);
     }
 }
 
@@ -74,6 +66,15 @@ export class ConflictError extends AppError {
  */
 export class UnauthorizedError extends AppError {
     constructor(message: string = "You are not authorized to perform this action.") {
+        super(message);
+    }
+}
+
+/**
+ * Raised in case of an error arises encountered when authenticating
+ */
+export class AuthenticationError extends AppError {
+    constructor(message: string) {
         super(message);
     }
 }

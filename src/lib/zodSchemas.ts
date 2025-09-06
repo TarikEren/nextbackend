@@ -68,10 +68,9 @@ export const zLoginSchema = z.object({
 export const zRegisterSchema = z.object({
     email: z.email({ message: "Geçersiz e-posta adresi" }).trim(),
     password: zPasswordSchema,
-    firstName: z.string().regex(/^[a-zA-Z]{4,10}$/, { error: "Geçersiz ad" }).trim(),
-    lastName: z.string().regex(/^[a-zA-Z]{4,20}$/, { error: "Geçersiz soyad" }).trim(),
-    phoneNumber: z.string().regex(/^(\+\d{1,2}\s?)?1?\.?\s?\(?\d{3}\)?\d{3}\d{4}$/, { error: "Geçersiz telefon numarası" }).trim(), //TODO: Add proper validation
     confirmPassword: z.string().nonempty({ error: "Şifre onayla alanı boş bırakılamaz" }).trim(),
+    emailVerified: z.boolean().default(false),
+    provider: z.enum(["credentials", "oauth"]).default("credentials")
 }).refine(data => data.password === data.confirmPassword, {
     message: "Şifreler birbiriyle aynı olmalı",
     path: ["confirmPassword"]
@@ -80,13 +79,24 @@ export const zRegisterSchema = z.object({
 /**
  * Update user validation schema
  */
+// TODO: Implement password change
+// TODO: Implement phone number and email validation
+// TODO: Implement adding product to and removing product from cart
+/* TODO: Implement adding to and removing from
+    addresses,
+    cards,
+    saved products,
+    visited products,
+    past orders,
+    */
+// TODO: Implement messaging system,
 
 export const zPaymentMethodSchema = z.object({
     gatewayCustomerId: z.string(),
     paymentMethodId: z.string(),
     brand: z.string(),
     last4: z.string(),
-    isDefault: z.boolean().default(false), // Make it required, with a default value
+    isDefault: z.boolean().default(false),
 });
 
 export const zAddressSchema = z.object({
@@ -103,7 +113,7 @@ export const zUserSchema = z.object({
     firstName: z.string(),
     lastName: z.string(),
     email: z.email(),
-    password: z.string(), // This is the hash
+    password: z.string(),
     phoneNumber: z.string(),
     savedCards: z.array(zPaymentMethodSchema).default([]),
     savedProductIds: z.array(z.string()).default([]),
@@ -116,6 +126,7 @@ export const zUserSchema = z.object({
     emailVerified: z.boolean().default(false),
     createdAt: z.date(),
     updatedAt: z.date(),
+    provider: z.enum(["credentials", "oauth"])
 });
 
 
@@ -181,7 +192,6 @@ export const zCreateProductSchema = z.object({
 /**
  * Update product validation schema
  */
-
 export const zUpdateProductSchema = z.object({
     name: z.string().nonempty({ error: "Ürün adı alanı boş bırakılamaz" }).trim().optional(),
     description: z.string().nonempty({ error: "Ürün açıklaması alanı boş bırakılamaz" }).trim().optional(),

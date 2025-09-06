@@ -3,8 +3,9 @@
  * @description Contains database operations pertaining to users
  */
 import { ConflictError, InternalServerError } from "@/lib/errors";
+import { IUser } from "@/lib/types/models";
+import { IUserRepository, PaginatedUsers, RegisterUserDTO, UpdateUserDTO, UserFilters, UserQuery } from "@/lib/types/repositories";
 import UserModel from "@/models/userModel";
-import { IUser, IUserRepository, PaginatedUsers, RegisterUserDTO, UpdateUserDTO, UserFilters, UserQuery } from "@/lib/types";
 import { Logger } from "pino";
 
 /**
@@ -138,7 +139,7 @@ export class UserRepository implements IUserRepository {
     async findByIdWithAuth(id: string): Promise<IUser | null> {
         try {
             // Fetch the user
-            const user = await UserModel.findById(id).lean<IUser>();
+            const user = await UserModel.findById(id).select("+password").lean<IUser>();
 
             // If the user isn't found return null
             if (!user) {
@@ -150,6 +151,24 @@ export class UserRepository implements IUserRepository {
         } catch (error) {
             this.logger.error({ error }, `Failed to fetch user with ID ${id}: ${error}`);
             throw new InternalServerError("Failed to fetch password");
+        }
+    }
+
+    async findByEmailWithAuth(email: string): Promise<IUser | null> {
+        try {
+            // Fetch the user
+            const user = await UserModel.findOne({email: email}).select("+password").lean<IUser>();
+            
+            // If the user isn't found return null
+            if (!user) {
+                return null;
+            }
+
+            // Return the user
+            return user;
+        } catch (error) {
+            this.logger.error({error}, `Failed to fetch user with email: ${email}: ${error}`);
+            throw new InternalServerError("Failed to fetch user");
         }
     }
 }

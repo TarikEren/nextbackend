@@ -1,8 +1,11 @@
-import { ConflictError, NotFoundError, UnauthorizedError, ValidationError } from "@/lib/errors";
-import { ActingUser, IUser, IUserRepository, IUserService, PaginatedUsers, RegisterUserDTO, UpdateUserDTO, UserFilters } from "@/lib/types";
-import { zChangePasswordSchema, zRegisterSchema, zUpdateUserSchema } from "@/lib/zodSchemas";
+import { AuthenticationError, ConflictError, NotFoundError, UnauthorizedError, ValidationError } from "@/lib/errors";
+import { zChangePasswordSchema, zLoginSchema, zRegisterSchema, zUpdateUserSchema } from "@/lib/zodSchemas";
 import { Logger } from "pino";
 import * as bcrypt from "bcrypt";
+import z from "zod";
+import { ActingUser, IUserService } from "@/lib/types/services";
+import { IUserRepository, PaginatedUsers, ProviderUserDTO, RegisterUserDTO, UpdateUserDTO, UserFilters } from "@/lib/types/repositories";
+import { IUser } from "@/lib/types/models";
 
 export class UserService implements IUserService {
     constructor(private readonly userRepository: IUserRepository, private readonly logger: Logger) { }
@@ -34,9 +37,8 @@ export class UserService implements IUserService {
             password: hashedPassword,
             email: validationResult.data.email,
             confirmPassword: data.confirmPassword,
-            firstName: validationResult.data.firstName,
-            lastName: validationResult.data.lastName,
-            phoneNumber: validationResult.data.phoneNumber
+            provider: "credentials",
+            emailVerified: false
         });
 
         // Log it 
@@ -171,5 +173,50 @@ export class UserService implements IUserService {
 
         // Return the users
         return users;
+    }
+
+    public async authenticateUser(credentials: z.infer<typeof zLoginSchema>): Promise<Omit<IUser, "password">> {
+        // Fetch user using their email with their password
+        const user = await this.userRepository.findByEmailWithAuth(credentials.email);
+        if (!user || !user.password) {
+            this.logger.warn({ email: credentials.email }, "Authentication failed, user not found or has no password");
+            throw new AuthenticationError("Invalid email or password");
+        }
+
+        if (user.provider === "oauth") {
+            this.logger.warn({email: credentials.email}, "Authentication failed, oauth user tried to login with email");
+            throw new ValidationError("Invalid email or password");
+        }
+
+        // Check if the passwords match
+        const passwordsMatch = await bcrypt.compare(credentials.password, user.password);
+        if (!passwordsMatch) {
+            // If not, log and throw an error
+            this.logger.warn({ email: credentials.email, password: credentials.password }, "Authentication failed, invalid password");
+            throw new AuthenticationError("Invalid email or password");
+        }
+
+        // Log and return the user after omitting their password
+        this.logger.info({ email: credentials.email }, `User has successfully authenticated`);
+        const { password: _, ...userToReturn } = user;
+        return userToReturn;
+    }
+
+    public async findOrCreateUserFromProvider(data: ProviderUserDTO): Promise<Omit<IUser, "password">> {
+        // Fetch the user
+        const existingUser = await this.userRepository.findByEmail(data.email);
+        
+        // If not found, create it
+        if (!existingUser) {
+            return await this.userRepository.create({
+                email: data.email,
+                password: "",
+                confirmPassword: "",
+                emailVerified: true,
+                provider: "oauth"
+            });
+        } else {
+            return existingUser;
+        }
     }
 }
