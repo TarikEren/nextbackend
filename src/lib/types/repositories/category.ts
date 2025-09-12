@@ -74,6 +74,15 @@ export interface ICategoryRepository {
     findById(id: string, options: FindByIdentifierOptions): Promise<ICategory | null>;
 
     /**
+     * Finds a category by slug
+     * @param {string} slug - Slug of the category to find
+     * @param {FindByIdentifierOptions} options - Finding options
+     * @returns {ICategory} The found category
+     * @throws {InternalServerError}
+     */
+    findById(slug: string, options: FindByIdentifierOptions): Promise<ICategory | null>;
+
+    /**
      * Finds all categories with the filters
      * @param {CategoryFilters} filters - Filters to apply
      * @returns {PaginatedData<ICategory>} Paginated, filtered and sorted categories

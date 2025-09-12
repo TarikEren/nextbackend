@@ -17,8 +17,7 @@ export const zCategorySchema = z.object({
  * Category creation schema
  */
 export const zCreateCategorySchema = zCategorySchema.omit({
-    isActive: true,
-    slug: true
+    isActive: true
 });
 
 /**

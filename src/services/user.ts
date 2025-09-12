@@ -5,9 +5,10 @@ import z from "zod";
 import { IUserService } from "@/lib/types/services/user";
 import { IUserRepository, ProviderUserDTO, RegisterUserDTO, UpdateUserDTO, UserFilters } from "@/lib/types/repositories/user";
 import { IUser } from "@/lib/types/models/user";
-import { ActingUser } from "@/lib/types/services/global";
+import { ActingUser, ProtectedActions } from "@/lib/types/services/global";
 import { PaginatedData } from "@/lib/types/repositories/global";
 import { zChangePasswordSchema, zLoginSchema, zRegisterSchema, zUpdateUserSchema } from "@/lib/schemas/user";
+import { ServiceUtils } from "./global";
 
 export class UserService implements IUserService {
     constructor(private readonly userRepository: IUserRepository, private readonly logger: Logger) { }
@@ -171,10 +172,7 @@ export class UserService implements IUserService {
 
     public async findAllUsers(filters: UserFilters, actingUser: ActingUser): Promise<PaginatedData<Omit<IUser, "password">>> {
         // Check for authorization, throw error if failed
-        if (!actingUser.isAdmin) {
-            this.logger.warn({ actingUserId: actingUser.id }, "Unauthorized fetch all users attempt");
-            throw new UnauthorizedError("You are not authorized for this operation");
-        }
+        ServiceUtils.ensureAdmin(this.logger, actingUser, ProtectedActions.FetchAllUsers);
 
         if (filters.includeDeleted === undefined) {
             filters.includeDeleted = true;

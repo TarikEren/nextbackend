@@ -6,34 +6,34 @@ import CategoryModel from "@/models/category";
 import { SortOrder } from "mongoose";
 import { Logger } from "pino";
 
-/**
- * Generates a query from the given filters
- * @param {CategoryFilters} filters - Filters to use
- * @returns {CategoryQuery} Query to use in category fetching
- */
-function generateQuery(filters: CategoryFilters): CategoryQuery {
-    let query: CategoryQuery = {};
-
-    if (filters.name) {
-        query.name = new RegExp(filters.name, 'i');
-    }
-
-    if (filters.parent) {
-        query.parent = filters.parent;
-    } else if (filters.parent === null) {
-        query.parent = null;
-    }
-
-    if (filters.includeDeleted !== true) {
-        // includeDeleted can be false, null or undefined as well
-        query.deletedAt = null;
-    }
-
-    return query;
-}
-
 export class CategoryRepository implements ICategoryRepository {
     constructor(private readonly logger: Logger) { }
+
+    /**
+     * Generates a query from the given filters
+     * @param {CategoryFilters} filters - Filters to use
+     * @returns {CategoryQuery} Query to use in category fetching
+     */
+    private generateQuery(filters: CategoryFilters): CategoryQuery {
+        let query: CategoryQuery = {};
+
+        if (filters.name) {
+            query.name = new RegExp(filters.name, 'i');
+        }
+
+        if (filters.parent) {
+            query.parent = filters.parent;
+        } else if (filters.parent === null) {
+            query.parent = null;
+        }
+
+        if (filters.includeDeleted !== true) {
+            // includeDeleted can be false, null or undefined as well
+            query.deletedAt = null;
+        }
+
+        return query;
+    }
 
     async create(data: CreateCategoryDTO): Promise<ICategory | null> {
         try {
@@ -84,10 +84,23 @@ export class CategoryRepository implements ICategoryRepository {
         }
     }
 
+    async findBySlug(slug: string, options: FindByIdentifierOptions): Promise<ICategory | null> {
+        try {
+            const query: any = { slug: slug };
+            if (!options.includeDeleted) {
+                query.deletedAt = null;
+            }
+            return await CategoryModel.findOne(query).lean<ICategory>();
+        } catch (error: any) {
+            this.logger.error({ error }, `Failed fetching a category by slug: ${error}`);
+            throw new InternalServerError("Kategori alınamadı, lütfen daha sonra tekrar deneyin");
+        }
+    }
+
     async findAll(filters: CategoryFilters): Promise<PaginatedData<ICategory>> {
         try {
             const offset = (filters.pageNumber - 1) * filters.entryPerPage;
-            const query = generateQuery(filters);
+            const query = this.generateQuery(filters);
 
             const sortBy = filters.sortBy || "createdAt";
             const sortOrder = filters.sortOrder === "asc" ? 1 : -1;
@@ -126,7 +139,7 @@ export class CategoryRepository implements ICategoryRepository {
                 {
                     _id: { $ne: id },   // A different entry than the provided one
                     deletedAt: null,    // Which isn't deleted
-                    or: [               // The name or the slug has to be equal to the category to restore
+                    $or: [              // The name or the slug has to be equal to the category to restore
                         { name: categoryToRestore.name },
                         { slug: categoryToRestore.slug }
                     ]
@@ -135,7 +148,7 @@ export class CategoryRepository implements ICategoryRepository {
 
             // If conflict exists, log and throw error
             if (conflictExists) {
-                this.logger.warn({name: categoryToRestore.name}, "Failed to restore category due to conflict");
+                this.logger.warn({ name: categoryToRestore.name }, "Failed to restore category due to conflict");
                 throw new ConflictError("Aktif kategoriler arasında bu kategorinin slug'ına veya isimine sahip başka bir kategori var");
             }
 

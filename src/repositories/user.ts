@@ -11,39 +11,38 @@ import { SortOrder } from "mongoose";
 import { Logger } from "pino";
 
 /**
- * Generates a query from the given filters
- * @param {UserFilters} filters - Filters to use
- * @returns {UserQuery} Query to use in user fetching
- */
-function generateQuery(filters: UserFilters): UserQuery {
-    let query: UserQuery = {};
-
-    if (filters.firstName) {
-        query.firstName = new RegExp(filters.firstName, 'i');
-    }
-
-    if (filters.lastName) {
-        query.lastName = new RegExp(filters.lastName, 'i');
-    }
-
-    if (filters.email) {
-        query.email = new RegExp(filters.email, 'i');
-    }
-
-    if (filters.includeDeleted !== true) {
-        // includeDeleted can be false, null or undefined as well
-        query.deletedAt = null;
-    }
-
-
-    return query;
-}
-
-/**
  * The user repository class
  */
 export class UserRepository implements IUserRepository {
     constructor(private readonly logger: Logger) { }
+
+    /**
+     * Generates a query from the given filters
+     * @param {UserFilters} filters - Filters to use
+     * @returns {UserQuery} Query to use in user fetching
+     */
+    private generateQuery(filters: UserFilters): UserQuery {
+        let query: UserQuery = {};
+
+        if (filters.firstName) {
+            query.firstName = new RegExp(filters.firstName, 'i');
+        }
+
+        if (filters.lastName) {
+            query.lastName = new RegExp(filters.lastName, 'i');
+        }
+
+        if (filters.email) {
+            query.email = new RegExp(filters.email, 'i');
+        }
+
+        if (filters.includeDeleted !== true) {
+            // includeDeleted can be false, null or undefined as well
+            query.deletedAt = null;
+        }
+
+        return query;
+    }
 
     async findByEmail(email: string, options: FindByIdentifierOptions): Promise<IUser | null> {
         try {
@@ -129,7 +128,7 @@ export class UserRepository implements IUserRepository {
     async findAll(filters: UserFilters): Promise<PaginatedData<IUser>> {
         try {
             const offset = (filters.pageNumber - 1) * filters.entryPerPage;
-            const query = generateQuery(filters);
+            const query = this.generateQuery(filters);
             const sortBy = filters.sortBy || 'createdAt';
             const sortOrder = filters.sortOrder === 'asc' ? 1 : -1;
             const sortOptions: Record<string, SortOrder> = { [sortBy]: sortOrder };

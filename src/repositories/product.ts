@@ -6,45 +6,46 @@ import ProductModel from "@/models/product";
 import mongoose from "mongoose";
 import { Logger } from "pino";
 
-/**
- * Generates a query from the given filters
- * @param {ProductFilters} filters - Filters to use
- * @returns {ProductQuery} Query to use in product fetching
- */
-function generateQuery(filters: ProductFilters): ProductQuery {
-    // Start with an empty query object
-    const query: ProductQuery = {};
-
-    // Only add properties to the query if the filter is provided
-    if (filters.name) {
-        query.name = new RegExp(filters.name, 'i');
-    }
-    if (filters.categoryId) {
-        query.categoryId = filters.categoryId;
-    }
-    if (filters.inStock === true) {
-        query.stock = { $gt: 0 };
-    }
-    if (filters.minPrice || filters.maxPrice) {
-        query.price = {};
-        if (filters.minPrice) {
-            query.price.$gte = filters.minPrice;
-        }
-        if (filters.maxPrice) {
-            query.price.$lte = filters.maxPrice;
-        }
-    }
-
-    if (filters.includeDeleted !== true) {
-        // includeDeleted can be false, null or undefined as well
-        query.deletedAt = null;
-    }
-
-    return query;
-}
-
 export class ProductRepository implements IProductRepository {
     constructor(private readonly logger: Logger) { };
+
+    /**
+     * Generates a query from the given filters
+     * @param {ProductFilters} filters - Filters to use
+     * @returns {ProductQuery} Query to use in product fetching
+     */
+    private generateQuery(filters: ProductFilters): ProductQuery {
+        // Start with an empty query object
+        const query: ProductQuery = {};
+
+        // Only add properties to the query if the filter is provided
+        if (filters.name) {
+            query.name = new RegExp(filters.name, 'i');
+        }
+        if (filters.categoryId) {
+            query.categoryId = filters.categoryId;
+        }
+        if (filters.inStock === true) {
+            query.stock = { $gt: 0 };
+        }
+        if (filters.minPrice || filters.maxPrice) {
+            query.price = {};
+            if (filters.minPrice) {
+                query.price.$gte = filters.minPrice;
+            }
+            if (filters.maxPrice) {
+                query.price.$lte = filters.maxPrice;
+            }
+        }
+
+        if (filters.includeDeleted !== true) {
+            // includeDeleted can be false, null or undefined as well
+            query.deletedAt = null;
+        }
+
+        return query;
+    }
+
 
     async create(data: CreateProductDTO): Promise<IProduct> {
         try {
@@ -88,7 +89,7 @@ export class ProductRepository implements IProductRepository {
     async findAll(filters: ProductFilters): Promise<PaginatedData<IProduct>> {
         try {
             // Generate the query object for finding documents
-            const query = generateQuery(filters);
+            const query = this.generateQuery(filters);
 
             // Prepare the sorting options
             // Set default values if not provided
