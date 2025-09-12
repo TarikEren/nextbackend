@@ -45,8 +45,10 @@ export class NotFoundError extends AppError {
  * Corresponds to HTTP 400.
  */
 export class ValidationError extends AppError {
-    constructor(message: string) {
+    errors?: any
+    constructor(message: string, errors?: any) {
         super(message);
+        this.errors = errors;
     }
 }
 

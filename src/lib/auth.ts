@@ -2,19 +2,13 @@ import NextAuth from "next-auth"
 import Credentials from "next-auth/providers/credentials"
 import Google, { GoogleProfile } from "next-auth/providers/google";
 import logger from "./logger";
-import { UserRepository } from "@/repositories/userRepository";
-import { UserService } from "@/services/userService";
+import { UserRepository } from "@/repositories/user";
+import { UserService } from "@/services/user";
 import { AuthenticationError } from "./errors";
+import { authConfig } from "./auth.config";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
-    pages: {
-        signIn: "/login",
-        error: "/error"
-    },
-    session: {
-        strategy: "jwt",
-        maxAge: 60 * 60 * 24 * 30 // 30 days
-    },
+    ...authConfig,
     providers: [
         Credentials({
             credentials: {
@@ -33,7 +27,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                         email: credentials?.email as string,
                         password: credentials?.password as string,
                     });
-
                     // Return the user
                     return {
                         id: user.id,
@@ -68,26 +61,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         })
     ],
     callbacks: {
-        jwt({ token, user }) {
-            if (user) {
-                token.id = user.id;
-                token.isAdmin = user.isAdmin;
-                token.emailVerified = (user.emailVerified as boolean)
-            }
-            return token;
-        },
-
-        session({ session, token }) {
-            if (token && session.user) {
-                session.user.id = token.id as string;
-                session.user.email = token.email as string;
-                session.user.isAdmin = token.isAdmin as boolean;
-                session.user.emailVerified = token.emailVerified as boolean;
-            }
-            return session;
-        },
-
-        async signIn({ user, account, profile }) {
+        ...authConfig.callbacks,
+        async signIn({ user, account }) {
             if (account?.provider === "google") {
                 const reqLogger = logger.child({ authProvider: 'google-signIn' });
                 const userRepository = new UserRepository(reqLogger);
